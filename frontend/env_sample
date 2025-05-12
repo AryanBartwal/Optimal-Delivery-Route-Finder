@@ -1,0 +1,3 @@
+# For production (deploy this as .env.production)
+# Replace with your actual backend URL after deployment
+REACT_APP_API_URL=https://your-backend-url-when-deployed.com 

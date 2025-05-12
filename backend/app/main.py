@@ -26,7 +26,7 @@ app = FastAPI(title="Dehradun Route Finder")
 # Configure CORS with more permissive settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend origin
+    allow_origins=["http://localhost:3000", "https://alok-nawani.github.io"],  # Add GitHub Pages origin
     allow_credentials=True,
     allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers

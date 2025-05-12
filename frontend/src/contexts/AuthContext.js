@@ -3,9 +3,12 @@ import axios from 'axios';
 
 const AuthContext = createContext(null);
 
+// API base URL - use environment variable or fallback to localhost for development
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
 // Create axios instance with base URL
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: API_BASE_URL,
 });
 
 // Add request interceptor to include token
@@ -47,7 +50,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const response = await axios.post('http://localhost:8000/token', {
+      const response = await axios.post(`${API_BASE_URL}/token`, {
         username,
         password,
       }, {
@@ -69,7 +72,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (username, email, password) => {
     try {
-      await axios.post('http://localhost:8000/register', {
+      await axios.post(`${API_BASE_URL}/register`, {
         username,
         email,
         password,
