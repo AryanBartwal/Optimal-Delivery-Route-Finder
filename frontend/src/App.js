@@ -15,11 +15,57 @@ import { useAuth } from './contexts/AuthContext';
 
 const theme = createTheme({
   palette: {
+    mode: 'light',
     primary: {
-      main: '#1976d2',
+      main: '#3f51b5',
+      light: '#757de8',
+      dark: '#303f9f',
+      contrastText: '#ffffff',
     },
     secondary: {
-      main: '#dc004e',
+      main: '#f50057',
+      light: '#ff4081',
+      dark: '#c51162',
+      contrastText: '#ffffff',
+    },
+    background: {
+      default: '#f5f5f7',
+      paper: '#ffffff',
+    },
+  },
+  typography: {
+    fontFamily: [
+      'Poppins',
+      'Roboto',
+      '"Helvetica Neue"',
+      'Arial',
+      'sans-serif',
+    ].join(','),
+    h4: {
+      fontWeight: 600,
+    },
+    h6: {
+      fontWeight: 600,
+    },
+  },
+  shape: {
+    borderRadius: 8,
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 600,
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+        },
+      },
     },
   },
 });

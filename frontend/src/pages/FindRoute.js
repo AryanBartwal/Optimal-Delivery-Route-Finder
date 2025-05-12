@@ -20,6 +20,7 @@ import {
   RadioGroup,
   FormControlLabel,
   FormLabel,
+  Stack,
 } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
@@ -43,6 +44,7 @@ import SpeedIcon from '@mui/icons-material/Speed';
 import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../contexts/AuthContext';
+import { alpha } from '@mui/material/styles';
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -292,276 +294,404 @@ const FindRoute = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
+    <Container maxWidth="lg" sx={{ my: 4 }}>
+      <Box sx={{ 
+        py: 3, 
+        px: 4, 
+        backgroundColor: 'primary.main', 
+        color: 'white', 
+        borderRadius: '12px', 
+        mb: 4,
+        background: 'linear-gradient(135deg, #3f51b5 0%, #7986cb 100%)',
+      }}>
+        <Typography variant="h4" component="h1" gutterBottom fontWeight="600">
+          Find Optimal Route
+        </Typography>
+        <Typography variant="subtitle1">
+          Choose start and end locations to discover the best routes in Dehradun
+        </Typography>
+      </Box>
+
       <Grid container spacing={4}>
-        <Grid xs={12} md={4}>
-          <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              Find Route
+        {/* Route Search Form */}
+        <Grid item xs={12} md={4}>
+          <Paper 
+            elevation={2} 
+            sx={{ 
+              p: 3, 
+              borderRadius: 3,
+              height: '100%'
+            }}
+          >
+            <Typography variant="h6" gutterBottom fontWeight="600" sx={{ mb: 3 }}>
+              Route Settings
             </Typography>
+            
+            <form onSubmit={handleSubmit}>
+              <Stack spacing={3}>
+                <FormControl fullWidth>
+                  <InputLabel id="start-location-label">Start Location</InputLabel>
+                  <Select
+                    labelId="start-location-label"
+                    value={startLocation}
+                    onChange={(e) => setStartLocation(e.target.value)}
+                    label="Start Location"
+                    required
+                    sx={{ borderRadius: 2 }}
+                  >
+                    {locations.map((location) => (
+                      <MenuItem key={location.name} value={location.name}>
+                        {location.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl fullWidth>
+                  <InputLabel id="end-location-label">End Location</InputLabel>
+                  <Select
+                    labelId="end-location-label"
+                    value={endLocation}
+                    onChange={(e) => setEndLocation(e.target.value)}
+                    label="End Location"
+                    required
+                    sx={{ borderRadius: 2 }}
+                  >
+                    {locations.map((location) => (
+                      <MenuItem key={location.name} value={location.name}>
+                        {location.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl fullWidth>
+                  <InputLabel id="vehicle-type-label">Vehicle Type</InputLabel>
+                  <Select
+                    labelId="vehicle-type-label"
+                    value={vehicleType}
+                    onChange={(e) => setVehicleType(e.target.value)}
+                    label="Vehicle Type"
+                    required
+                    sx={{ borderRadius: 2 }}
+                  >
+                    <MenuItem value="car">
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <DirectionsCarIcon sx={{ mr: 1, color: 'primary.main' }} />
+                        Car
+                      </Box>
+                    </MenuItem>
+                    <MenuItem value="bike">
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <DirectionsBikeIcon sx={{ mr: 1, color: 'success.main' }} />
+                        Bike
+                      </Box>
+                    </MenuItem>
+                    <MenuItem value="walk">
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <DirectionsWalkIcon sx={{ mr: 1, color: 'warning.main' }} />
+                        Walk
+                      </Box>
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+
+                <FormControl fullWidth>
+                  <InputLabel id="weather-label">Custom Weather (Optional)</InputLabel>
+                  <Select
+                    labelId="weather-label"
+                    value={userWeather}
+                    onChange={(e) => setUserWeather(e.target.value)}
+                    label="Custom Weather (Optional)"
+                    sx={{ borderRadius: 2 }}
+                  >
+                    <MenuItem value="">
+                      <em>Use current weather</em>
+                    </MenuItem>
+                    <MenuItem value="sunny">
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        {weatherIcons.sunny}
+                        <Typography sx={{ ml: 1 }}>Sunny</Typography>
+                      </Box>
+                    </MenuItem>
+                    <MenuItem value="cloudy">
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        {weatherIcons.cloudy}
+                        <Typography sx={{ ml: 1 }}>Cloudy</Typography>
+                      </Box>
+                    </MenuItem>
+                    <MenuItem value="rainy">
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        {weatherIcons.rainy}
+                        <Typography sx={{ ml: 1 }}>Rainy</Typography>
+                      </Box>
+                    </MenuItem>
+                    <MenuItem value="snowy">
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        {weatherIcons.snowy}
+                        <Typography sx={{ ml: 1 }}>Snowy</Typography>
+                      </Box>
+                    </MenuItem>
+                    <MenuItem value="foggy">
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        {weatherIcons.foggy}
+                        <Typography sx={{ ml: 1 }}>Foggy</Typography>
+                      </Box>
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+
+                <Button 
+                  type="submit" 
+                  variant="contained" 
+                  color="primary" 
+                  size="large"
+                  startIcon={<DirectionsCarIcon />}
+                  disabled={!startLocation || !endLocation}
+                  sx={{ 
+                    mt: 2, 
+                    py: 1.5, 
+                    borderRadius: 2,
+                    boxShadow: '0 4px 12px rgba(63, 81, 181, 0.2)'
+                  }}
+                >
+                  Find Route
+                </Button>
+              </Stack>
+            </form>
+            
             {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
+              <Alert severity="error" sx={{ mt: 2 }}>
                 {error}
               </Alert>
-            )}
-            <Box component="form" onSubmit={handleSubmit}>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Start Location</InputLabel>
-                <Select
-                  value={startLocation}
-                  label="Start Location"
-                  onChange={(e) => setStartLocation(e.target.value)}
-                  required
-                >
-                  {locations.map((loc) => (
-                    <MenuItem key={loc.name} value={loc.name}>
-                      {loc.name}
-                      <Chip 
-                        label={loc.type} 
-                        size="small" 
-                        sx={{ ml: 1 }}
-                        color={loc.traffic_zone === 'high' ? 'error' : loc.traffic_zone === 'medium' ? 'warning' : 'success'}
-                      />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl fullWidth margin="normal">
-                <InputLabel>End Location</InputLabel>
-                <Select
-                  value={endLocation}
-                  label="End Location"
-                  onChange={(e) => setEndLocation(e.target.value)}
-                  required
-                >
-                  {locations.map((loc) => (
-                    <MenuItem key={loc.name} value={loc.name}>
-                      {loc.name}
-                      <Chip 
-                        label={loc.type} 
-                        size="small" 
-                        sx={{ ml: 1 }}
-                        color={loc.traffic_zone === 'high' ? 'error' : loc.traffic_zone === 'medium' ? 'warning' : 'success'}
-                      />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Vehicle Type</InputLabel>
-                <Select
-                  value={vehicleType}
-                  label="Vehicle Type"
-                  onChange={(e) => setVehicleType(e.target.value)}
-                  required
-                >
-                  <MenuItem value="car">
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {vehicleIcons.car} <Box sx={{ ml: 1 }}>Car</Box>
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value="bike">
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {vehicleIcons.bike} <Box sx={{ ml: 1 }}>Bike</Box>
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value="walk">
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {vehicleIcons.walk} <Box sx={{ ml: 1 }}>Walk</Box>
-                    </Box>
-                  </MenuItem>
-                </Select>
-              </FormControl>
-
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Weather (Optional)</InputLabel>
-                <Select
-                  value={userWeather}
-                  label="Weather (Optional)"
-                  onChange={(e) => setUserWeather(e.target.value)}
-                >
-                  <MenuItem value="">
-                    <em>Automatic (Use Current Season)</em>
-                  </MenuItem>
-                  <MenuItem value="sunny">
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {weatherIcons.sunny} <Box sx={{ ml: 1 }}>Sunny</Box>
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value="cloudy">
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {weatherIcons.cloudy} <Box sx={{ ml: 1 }}>Cloudy</Box>
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value="rainy">
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {weatherIcons.rainy} <Box sx={{ ml: 1 }}>Rainy</Box>
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value="foggy">
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {weatherIcons.foggy} <Box sx={{ ml: 1 }}>Foggy</Box>
-                    </Box>
-                  </MenuItem>
-                </Select>
-              </FormControl>
-
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                sx={{ mt: 3 }}
-                startIcon={vehicleIcons[vehicleType]}
-              >
-                Find Route
-              </Button>
-            </Box>
-
-            {route && (
-              <Box sx={{ mt: 3 }}>
-                {/* Weather and Traffic Information */}
-                <Paper sx={{ p: 2, mb: 2, bgcolor: 'background.default' }}>
-                  <Typography variant="h6" gutterBottom>
-                    Conditions
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    {weatherIcons[route.weather?.condition] || <WbSunnyIcon />}
-                    <Typography variant="body2" sx={{ ml: 1 }}>
-                      Weather: {getWeatherDescription(route.weather)}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    {trafficIcons[route.traffic] || <CheckCircleIcon />}
-                    <Typography variant="body2" sx={{ ml: 1 }}>
-                      Traffic: {getTrafficDescription(route.traffic)}
-                    </Typography>
-                  </Box>
-                </Paper>
-                
-                {/* Route Options */}
-                <Typography variant="h6" gutterBottom>
-                  Route Options
-                </Typography>
-                <FormControl component="fieldset" sx={{ width: '100%' }}>
-                  <RadioGroup 
-                    value={selectedRouteOption} 
-                    onChange={handleRouteOptionChange}
-                  >
-                    {route.route_options.map((option, index) => (
-                      <Paper 
-                        key={option.option_name} 
-                        sx={{ 
-                          p: 2, 
-                          mb: 1, 
-                          border: option.option_name === selectedRouteOption ? 2 : 0,
-                          borderColor: 'primary.main'
-                        }}
-                      >
-                        <FormControlLabel 
-                          value={option.option_name} 
-                          control={<Radio />} 
-                          label={
-                            <Box>
-                              <Typography variant="subtitle1">{option.option_name}</Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {option.description}
-                              </Typography>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                                <Typography variant="body2">
-                                  Distance: {option.distance.toFixed(2)} km
-                                </Typography>
-                                <Typography variant="body2">
-                                  Duration: {option.duration.toFixed(0)} min
-                                </Typography>
-                              </Box>
-                            </Box>
-                          } 
-                        />
-                      </Paper>
-                    ))}
-                  </RadioGroup>
-                </FormControl>
-                
-                {steps.length > 0 && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      Turn-by-Turn Directions
-                    </Typography>
-                    <Divider sx={{ mb: 1 }} />
-                    <List dense>
-                      {steps.map((step, index) => (
-                        <ListItem key={index}>
-                          <ListItemIcon>
-                            {getDirectionIcon(step.instruction)}
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={step.instruction.charAt(0).toUpperCase() + step.instruction.slice(1)}
-                            secondary={`${formatDistance(step.distance)} · ${formatDuration(step.duration)}`}
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  </Box>
-                )}
-              </Box>
             )}
           </Paper>
         </Grid>
 
-        <Grid xs={12} md={8}>
-          <Paper elevation={3} sx={{ height: '600px' }}>
+        {/* Map and Route Options */}
+        <Grid item xs={12} md={8}>
+          {/* Map Container */}
+          <Paper 
+            elevation={2} 
+            sx={{ 
+              p: 0, 
+              borderRadius: 3,
+              overflow: 'hidden',
+              mb: 3,
+              height: '400px'
+            }}
+          >
             <MapContainer
               center={mapCenter}
               zoom={mapZoom}
               style={{ height: '100%', width: '100%' }}
             >
               <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              {locations.map((loc) => (
-                <Marker
-                  key={loc.name}
-                  position={[loc.lat, loc.lng]}
-                  icon={
-                    loc.name === startLocation 
-                      ? startIcon 
-                      : loc.name === endLocation 
-                        ? endIcon 
-                        : new L.Icon.Default()
-                  }
-                >
-                  <Popup>
-                    <Typography variant="subtitle2">{loc.name}</Typography>
-                    <Typography variant="body2">Type: {loc.type}</Typography>
-                    <Typography variant="body2">
-                      Traffic: {loc.traffic_zone}
-                    </Typography>
-                    <Typography variant="body2">
-                      Parking: {loc.parking ? 'Available' : 'Not available'}
-                    </Typography>
-                  </Popup>
-                </Marker>
-              ))}
-              {routePaths.length > 0 && route && route.route_options && 
-                routePaths.map((path, index) => {
-                  // Only show the selected route option
-                  const isSelectedOption = route.route_options[index]?.option_name === selectedRouteOption;
-                  return isSelectedOption ? (
+              
+              {route && (
+                <>
+                  {/* Start Marker */}
+                  <Marker position={[route.start.lat, route.start.lng]} icon={startIcon}>
+                    <Popup>
+                      Start: {route.start.name}
+                    </Popup>
+                  </Marker>
+                  
+                  {/* End Marker */}
+                  <Marker position={[route.end.lat, route.end.lng]} icon={endIcon}>
+                    <Popup>
+                      End: {route.end.name}
+                    </Popup>
+                  </Marker>
+                  
+                  {/* Route Paths */}
+                  {routePaths.map((path, index) => (
                     <Polyline
                       key={index}
-                      positions={path}
-                      color={getPolylineColor(vehicleType, index)}
+                      positions={path.path}
+                      color={path.color}
                       weight={5}
-                      opacity={0.8}
+                      opacity={path.selected ? 1 : 0.6}
                     />
-                  ) : null;
-                })
-              }
+                  ))}
+                </>
+              )}
             </MapContainer>
           </Paper>
+          
+          {/* Route Details and Options */}
+          {route && (
+            <Paper 
+              elevation={2} 
+              sx={{ 
+                p: 3, 
+                borderRadius: 3
+              }}
+            >
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 3, gap: 2 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  py: 1, 
+                  px: 2, 
+                  borderRadius: 2, 
+                  bgcolor: 'primary.light', 
+                  color: 'white'
+                }}>
+                  {weatherIcons[route.weather.condition] || weatherIcons.sunny}
+                  <Typography variant="body1" sx={{ ml: 1 }}>
+                    {route.weather.condition}
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  py: 1, 
+                  px: 2, 
+                  borderRadius: 2, 
+                  bgcolor: 
+                    route.traffic === 'light' 
+                      ? 'success.light' 
+                      : route.traffic === 'moderate' 
+                        ? 'warning.light' 
+                        : 'error.light',
+                  color: 'white'
+                }}>
+                  {trafficIcons[route.traffic] || trafficIcons.light}
+                  <Typography variant="body1" sx={{ ml: 1, textTransform: 'capitalize' }}>
+                    {route.traffic} Traffic
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  py: 1, 
+                  px: 2, 
+                  borderRadius: 2, 
+                  bgcolor: 'background.default'
+                }}>
+                  {vehicleIcons[route.vehicle_type] || vehicleIcons.car}
+                  <Typography variant="body1" sx={{ ml: 1, textTransform: 'capitalize' }}>
+                    {route.vehicle_type}
+                  </Typography>
+                </Box>
+              </Box>
+              
+              <Typography variant="h6" gutterBottom fontWeight="600">
+                Route Options
+              </Typography>
+              
+              <FormControl component="fieldset" sx={{ width: '100%', mb: 3 }}>
+                <RadioGroup 
+                  value={selectedRouteOption} 
+                  onChange={handleRouteOptionChange}
+                >
+                  <Grid container spacing={2}>
+                    {route.route_options.map((option, index) => (
+                      <Grid item xs={12} key={index}>
+                        <Paper 
+                          elevation={selectedRouteOption === option.option_name ? 2 : 0} 
+                          sx={{ 
+                            p: 2, 
+                            borderRadius: 2,
+                            border: `2px solid ${selectedRouteOption === option.option_name 
+                              ? getPolylineColor(route.vehicle_type, index) 
+                              : 'transparent'}`,
+                            transition: 'all 0.2s ease',
+                            '&:hover': { 
+                              bgcolor: 'background.default',
+                              transform: 'translateY(-2px)'
+                            }
+                          }}
+                        >
+                          <FormControlLabel
+                            value={option.option_name}
+                            control={<Radio />}
+                            label={
+                              <Box>
+                                <Typography variant="subtitle1" fontWeight="600">
+                                  {option.option_name}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  {option.description}
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                                  <Chip 
+                                    size="small" 
+                                    label={`${option.distance} km`}
+                                    sx={{ 
+                                      bgcolor: alpha(getPolylineColor(route.vehicle_type, index), 0.1),
+                                      borderRadius: '8px'
+                                    }}
+                                  />
+                                  <Chip 
+                                    size="small" 
+                                    label={`${option.duration} min`}
+                                    sx={{ 
+                                      bgcolor: alpha(getPolylineColor(route.vehicle_type, index), 0.1),
+                                      borderRadius: '8px'
+                                    }}
+                                  />
+                                </Box>
+                              </Box>
+                            }
+                            sx={{ 
+                              width: '100%', 
+                              alignItems: 'flex-start', 
+                              ml: 0,
+                              '& .MuiFormControlLabel-label': { 
+                                width: '100%' 
+                              }
+                            }}
+                          />
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </RadioGroup>
+              </FormControl>
+              
+              {/* Directions */}
+              {steps.length > 0 && (
+                <>
+                  <Typography variant="h6" gutterBottom fontWeight="600">
+                    Directions
+                  </Typography>
+                  <Paper 
+                    elevation={0} 
+                    sx={{ 
+                      bgcolor: 'background.default', 
+                      borderRadius: 2,
+                      maxHeight: '300px',
+                      overflow: 'auto'
+                    }}
+                  >
+                    <List dense>
+                      {steps.map((step, index) => (
+                        <React.Fragment key={index}>
+                          <ListItem>
+                            <ListItemIcon>
+                              {getDirectionIcon(step.instruction)}
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={step.instruction.charAt(0).toUpperCase() + step.instruction.slice(1)}
+                              secondary={`${formatDistance(step.distance)} - ${formatDuration(step.duration)}`}
+                            />
+                          </ListItem>
+                          {index < steps.length - 1 && <Divider variant="inset" component="li" />}
+                        </React.Fragment>
+                      ))}
+                    </List>
+                  </Paper>
+                </>
+              )}
+            </Paper>
+          )}
         </Grid>
       </Grid>
     </Container>
