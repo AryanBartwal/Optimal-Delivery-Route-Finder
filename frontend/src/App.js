@@ -11,6 +11,7 @@ import History from './pages/History';
 import About from './pages/About';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Landing from './pages/Landing';
 import { useAuth } from './contexts/AuthContext';
 
 const theme = createTheme({
@@ -76,6 +77,7 @@ function PrivateRoute({ children }) {
 }
 
 function App() {
+  const { isAuthenticated } = useAuth();
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -85,11 +87,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route
           path="/"
-          element={
-            <PrivateRoute>
-              <Dashboard />
-            </PrivateRoute>
-          }
+          element={isAuthenticated ? <Dashboard /> : <Landing />}
         />
         <Route
           path="/find-route"

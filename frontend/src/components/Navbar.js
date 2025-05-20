@@ -56,19 +56,19 @@ const Navbar = () => {
         <Toolbar disableGutters sx={{ py: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
             <ExploreIcon sx={{ mr: 1, fontSize: 28 }} />
-            <Typography
-              variant="h6"
-              component={RouterLink}
-              to="/"
-              sx={{
-                textDecoration: 'none',
-                color: 'inherit',
+          <Typography
+            variant="h6"
+            component={RouterLink}
+            to="/"
+            sx={{
+              textDecoration: 'none',
+              color: 'inherit',
                 fontWeight: 700,
                 letterSpacing: '0.5px',
-              }}
-            >
-              Dehradun Route Finder
-            </Typography>
+            }}
+          >
+            Dehradun Route Finder
+          </Typography>
           </Box>
 
           {isMobile ? (
@@ -132,51 +132,51 @@ const Navbar = () => {
             </Box>
           ) : (
             <Box sx={{ display: 'flex', gap: 1 }}>
-              {isAuthenticated ? (
-                <>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/"
+            {isAuthenticated ? (
+              <>
+                <Button
+                  color="inherit"
+                  component={RouterLink}
+                  to="/"
                     sx={{
                       px: 2,
                       borderRadius: '20px',
                       bgcolor: isActive('/') ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                       '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.25)' }
                     }}
-                  >
-                    Dashboard
-                  </Button>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/find-route"
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  color="inherit"
+                  component={RouterLink}
+                  to="/find-route"
                     sx={{
                       px: 2,
                       borderRadius: '20px',
                       bgcolor: isActive('/find-route') ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                       '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.25)' }
                     }}
-                  >
-                    Find Route
-                  </Button>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/history"
+                >
+                  Find Route
+                </Button>
+                <Button
+                  color="inherit"
+                  component={RouterLink}
+                  to="/history"
                     sx={{
                       px: 2,
                       borderRadius: '20px',
                       bgcolor: isActive('/history') ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                       '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.25)' }
                     }}
-                  >
-                    History
-                  </Button>
-                  <Button
-                    color="inherit"
+                >
+                  History
+                </Button>
+                <Button
+                  color="inherit"
                     variant="outlined"
-                    onClick={handleLogout}
+                  onClick={handleLogout}
                     sx={{
                       ml: 1,
                       px: 2,
@@ -184,54 +184,54 @@ const Navbar = () => {
                       border: '1px solid rgba(255, 255, 255, 0.5)',
                       '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)', borderColor: 'white' }
                     }}
-                  >
-                    Logout
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/login"
+                >
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  color="inherit"
+                  component={RouterLink}
+                  to="/login"
                     sx={{
                       px: 2,
                       borderRadius: '20px',
                       bgcolor: isActive('/login') ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                       '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.25)' }
                     }}
-                  >
-                    Login
-                  </Button>
-                  <Button
-                    color="inherit"
-                    component={RouterLink}
-                    to="/register"
+                >
+                  Login
+                </Button>
+                <Button
+                  color="inherit"
+                  component={RouterLink}
+                  to="/register"
                     sx={{
                       px: 2,
                       borderRadius: '20px',
                       bgcolor: isActive('/register') ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                       '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.25)' }
                     }}
-                  >
-                    Register
-                  </Button>
-                </>
-              )}
-              <Button
-                color="inherit"
-                component={RouterLink}
-                to="/about"
+                >
+                  Register
+                </Button>
+              </>
+            )}
+            <Button
+              color="inherit"
+              component={RouterLink}
+              to="/about"
                 sx={{
                   px: 2,
                   borderRadius: '20px',
                   bgcolor: isActive('/about') ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                   '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.25)' }
                 }}
-              >
-                About
-              </Button>
-            </Box>
+            >
+              About
+            </Button>
+          </Box>
           )}
         </Toolbar>
       </Container>

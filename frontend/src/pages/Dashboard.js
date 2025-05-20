@@ -49,7 +49,7 @@ const StatCard = ({ icon, title, value, color, subtitle }) => {
       }
     }}>
       <CardContent sx={{ position: 'relative', zIndex: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <Avatar
             sx={{
               bgcolor: alpha(color, 0.1),
@@ -58,23 +58,23 @@ const StatCard = ({ icon, title, value, color, subtitle }) => {
               height: 48,
             }}
           >
-            {icon}
+        {icon}
           </Avatar>
           <Typography variant="h6" sx={{ ml: 2, color: theme.palette.text.primary, fontWeight: 600 }}>
-            {title}
-          </Typography>
-        </Box>
-        <Typography variant="h4" color={color} sx={{ fontWeight: 700, mb: 0.5 }}>
-          {value}
+          {title}
         </Typography>
+      </Box>
+        <Typography variant="h4" color={color} sx={{ fontWeight: 700, mb: 0.5 }}>
+        {value}
+      </Typography>
         {subtitle && (
           <Typography variant="body2" color="text.secondary">
             {subtitle}
           </Typography>
         )}
-      </CardContent>
-    </Card>
-  );
+    </CardContent>
+  </Card>
+);
 };
 
 const Dashboard = () => {
@@ -133,8 +133,8 @@ const Dashboard = () => {
           <Grid container spacing={4} alignItems="center">
             <Grid item xs={12} md={7}>
               <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
-                Welcome to Dehradun Route Finder
-              </Typography>
+          Welcome to Dehradun Route Finder
+        </Typography>
               <Typography variant="h6" paragraph sx={{ opacity: 0.9, mb: 3 }}>
                 Discover the most optimal paths across Dehradun city with real-time weather and traffic updates.
               </Typography>
@@ -189,7 +189,7 @@ const Dashboard = () => {
                     <Route sx={{ mr: 1, color: theme.palette.primary.main }} />
                     <Typography variant="h6" fontWeight={600}>
                       Popular Routes
-                    </Typography>
+        </Typography>
                   </Box>
                   <Stack spacing={2}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -213,22 +213,22 @@ const Dashboard = () => {
       </Box>
 
       <Container maxWidth="lg" sx={{ mb: 6 }}>
-        <Grid container spacing={3}>
-          {/* Stats Cards */}
+      <Grid container spacing={3}>
+        {/* Stats Cards */}
           <Grid item xs={12} sm={6} md={4}>
-            <StatCard
+          <StatCard
               icon={<Timeline />}
-              title="Total Routes"
-              value={stats.totalRoutes}
+            title="Total Routes"
+            value={stats.totalRoutes}
               color={theme.palette.primary.main}
               subtitle="Routes you've searched"
-            />
-          </Grid>
+          />
+        </Grid>
           <Grid item xs={12} sm={6} md={4}>
-            <StatCard
+          <StatCard
               icon={<Star />}
-              title="Favorite Location"
-              value={stats.favoriteLocation}
+            title="Favorite Location"
+            value={stats.favoriteLocation}
               color={theme.palette.secondary.main}
               subtitle="Your most visited place"
             />
@@ -240,48 +240,48 @@ const Dashboard = () => {
               value="Enabled"
               color="#00b0ff"
               subtitle="Routes adapt to weather"
-            />
-          </Grid>
+          />
+        </Grid>
 
-          {/* Quick Actions */}
-          <Grid item xs={12}>
+        {/* Quick Actions */}
+        <Grid item xs={12}>
             <Paper sx={{ p: 4, borderRadius: 2 }}>
               <Typography variant="h5" gutterBottom fontWeight={600}>
-                Quick Actions
-              </Typography>
+              Quick Actions
+            </Typography>
               <Divider sx={{ my: 2 }} />
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6} md={4}>
-                  <Button
+              <Button
                     fullWidth
-                    variant="contained"
-                    component={RouterLink}
-                    to="/find-route"
-                    startIcon={<DirectionsRun />}
+                variant="contained"
+                component={RouterLink}
+                to="/find-route"
+                startIcon={<DirectionsRun />}
                     sx={{ 
                       py: 1.5, 
                       borderRadius: 2,
                       bgcolor: theme.palette.primary.main
                     }}
-                  >
-                    Find New Route
-                  </Button>
+              >
+                Find New Route
+              </Button>
                 </Grid>
                 <Grid item xs={12} sm={6} md={4}>
-                  <Button
+              <Button
                     fullWidth
-                    variant="outlined"
-                    component={RouterLink}
-                    to="/history"
-                    startIcon={<Timeline />}
+                variant="outlined"
+                component={RouterLink}
+                to="/history"
+                startIcon={<Timeline />}
                     sx={{ 
                       py: 1.5, 
                       borderRadius: 2, 
                       borderWidth: 2
                     }}
-                  >
-                    View History
-                  </Button>
+              >
+                View History
+              </Button>
                 </Grid>
                 <Grid item xs={12} sm={6} md={4}>
                   <Button
@@ -306,19 +306,19 @@ const Dashboard = () => {
                   </Button>
                 </Grid>
               </Grid>
-            </Paper>
-          </Grid>
+          </Paper>
+        </Grid>
 
-          {/* Last Route */}
-          {stats.lastRoute && (
-            <Grid item xs={12}>
+        {/* Last Route */}
+        {stats.lastRoute && (
+          <Grid item xs={12}>
               <Paper sx={{ p: 4, borderRadius: 2 }}>
                 <Typography variant="h5" gutterBottom fontWeight={600}>
-                  Last Route
-                </Typography>
+                Last Route
+              </Typography>
                 <Divider sx={{ my: 2 }} />
                 <Grid container spacing={3}>
-                  <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={6}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <Avatar sx={{ bgcolor: alpha(theme.palette.success.main, 0.1), color: theme.palette.success.main, mr: 2 }}>
@@ -339,8 +339,8 @@ const Dashboard = () => {
                         </Box>
                       </Box>
                     </Box>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
+                </Grid>
+                <Grid item xs={12} md={6}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main, mr: 2 }}>
@@ -372,13 +372,13 @@ const Dashboard = () => {
                     >
                       Re-Search This Route
                     </Button>
-                  </Grid>
                 </Grid>
-              </Paper>
-            </Grid>
-          )}
-        </Grid>
-      </Container>
+              </Grid>
+            </Paper>
+          </Grid>
+        )}
+      </Grid>
+    </Container>
     </>
   );
 };

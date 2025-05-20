@@ -41,8 +41,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      setIsAuthenticated(true);
-      // Set default axios auth header
+      // Optionally, verify token with backend here for extra security
+      // For now, do not set isAuthenticated to true on page load
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
     setLoading(false);
@@ -58,14 +58,14 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json',
         }
       });
-
-      const { access_token } = response.data;
-      localStorage.setItem('token', access_token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-      setIsAuthenticated(true);
-      return true;
-    } catch (error) {
-      console.error('Login error:', error);
+      if (response.data && response.data.access_token) {
+        localStorage.setItem('token', response.data.access_token);
+        setIsAuthenticated(true);
+        api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
+        return true;
+      }
+      return false;
+    } catch (err) {
       return false;
     }
   };

@@ -3,7 +3,11 @@ import math
 import requests
 import random
 import datetime
+import os
+import polyline
 from .locations import DEHRADUN_LOCATIONS, get_location_by_name
+
+OPENROUTESERVICE_API_KEY = os.environ.get("ORS_API_KEY", "5b3ce3597851110001cf6248216b7bd858544b6e9011fc6c183d49b7")
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate distance between two points using Haversine formula."""
@@ -342,6 +346,47 @@ def generate_realistic_road_path(start_lat: float, start_lng: float, end_lat: fl
     
     return path
 
+def get_ors_alternatives(start_lat, start_lng, end_lat, end_lng, profile="driving-car", alternatives=3):
+    """Get alternative routes from OpenRouteService API."""
+    url = f"https://api.openrouteservice.org/v2/directions/{profile}/geojson"
+    headers = {"Authorization": OPENROUTESERVICE_API_KEY, "Content-Type": "application/json"}
+    body = {
+        "coordinates": [
+            [start_lng, start_lat],
+            [end_lng, end_lat]
+        ],
+        "alternative_routes": {
+            "share_factor": 0.6,
+            "target_count": alternatives,
+            "weight_factor": 1.6
+        },
+        "instructions": True
+    }
+    try:
+        resp = requests.post(url, json=body, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
+            # Each feature is a route
+            features = data.get("features", [])
+            routes = []
+            for i, feat in enumerate(features):
+                props = feat.get("properties", {})
+                geometry = feat.get("geometry", {})
+                routes.append({
+                    "geometry": geometry,
+                    "distance": props.get("summary", {}).get("distance", 0),
+                    "duration": props.get("summary", {}).get("duration", 0),
+                    "segments": props.get("segments", []),
+                    "option_name": f"Route {i+1}: {'Fast (Shortest)' if i==0 else 'Alternate'}"
+                })
+            return routes
+        else:
+            print(f"ORS error: {resp.status_code} {resp.text}")
+            return []
+    except Exception as e:
+        print(f"ORS request failed: {e}")
+        return []
+
 def get_route(start_location: str, end_location: str, vehicle_type: str, user_weather: str = None) -> Dict[str, Any]:
     """Calculate multiple route options between two locations using OSRM for real road-based routes.
     
@@ -357,98 +402,54 @@ def get_route(start_location: str, end_location: str, vehicle_type: str, user_we
     if not start or not end:
         raise ValueError("Invalid location names")
 
-    # Map vehicle type to OSRM profile
     profile_map = {
-        "car": "driving",
-        "bike": "cycling",
-        "walk": "walking"
+        "car": "driving-car",
+        "bike": "cycling-regular",
+        "walk": "foot-walking"
     }
     
-    profile = profile_map.get(vehicle_type, "driving")
+    profile = profile_map.get(vehicle_type, "driving-car")
     
-    # Get current weather and traffic conditions
     weather = get_seasonal_weather() if not user_weather else {"condition": user_weather}
     traffic = get_traffic_condition(start["traffic_zone"], end["traffic_zone"])
     
-    # Try to get routes from OSRM using multiple approaches
-    osrm_routes = get_osrm_alternatives(start["lng"], start["lat"], end["lng"], end["lat"], profile)
+    # Use ORS for real alternatives
+    ors_routes = get_ors_alternatives(start["lat"], start["lng"], end["lat"], end["lng"], profile, alternatives=3)
     
     route_options = []
     
-    # Calculate direct distance for reference
-    direct_distance = calculate_distance(start["lat"], start["lng"], end["lat"], end["lng"])
-    
-    # Process OSRM routes if available
-    if osrm_routes:
-        # Sort routes by distance 
-        sorted_routes = sorted(osrm_routes, key=lambda r: r["distance"])
-        
-        for i, route in enumerate(sorted_routes):
-            # Extract the route geometry (polyline)
+    if ors_routes:
+        for i, route in enumerate(ors_routes):
             path = decode_polyline(route["geometry"])
-            
-            # Extract distance and duration
-            distance = route["distance"] / 1000  # Convert meters to kilometers
-            duration = route["duration"] / 60    # Convert seconds to minutes
-            
-            # Apply weather and traffic adjustments to duration
-            adjusted_duration = duration
-            if weather["condition"] == "rainy":
-                adjusted_duration *= 1.2  # 20% slower in rain
-            elif weather["condition"] == "snowy":
-                adjusted_duration *= 1.5  # 50% slower in snow
-            elif weather["condition"] == "foggy":
-                adjusted_duration *= 1.3  # 30% slower in fog
-            
-            if traffic == "moderate":
-                adjusted_duration *= 1.3  # 30% slower in moderate traffic
-            elif traffic == "heavy":
-                adjusted_duration *= 1.6  # 60% slower in heavy traffic
-            
-            # Extract turn-by-turn directions
+            distance = route["distance"] / 1000
+            duration = route["duration"] / 60
             steps = []
-            if "legs" in route and route["legs"]:
-                for leg in route["legs"]:
-                    if "steps" in leg:
-                        for step in leg["steps"]:
-                            steps.append({
-                                "instruction": step["maneuver"]["type"],
-                                "distance": step["distance"],
-                                "duration": step["duration"]
-                            })
-            
-            # If we don't have valid steps, generate basic directions
-            if not steps and path:
-                steps = generate_basic_directions(path)
-            
-            # Name routes based on their characteristics: Fast vs Alternate
-            if i == 0:
-                route_name = "Route 1: Fast (Shortest)"
-                route_desc = "Shortest distance but might have more traffic"
-            else:
-                # Calculate how much longer this route is compared to the fastest
-                pct_longer = (distance / sorted_routes[0]["distance"] - 1) * 100
-                route_name = f"Route {i+1}: Alternate"
-                route_desc = f"{pct_longer:.1f}% longer but potentially less traffic"
-            
-            # Add route option
+            # Parse turn-by-turn steps if available
+            if route.get("segments"):
+                for seg in route["segments"]:
+                    for step in seg.get("steps", []):
+                        steps.append({
+                            "instruction": step.get("instruction", ""),
+                            "distance": step.get("distance", 0),
+                            "duration": step.get("duration", 0)
+                        })
             route_options.append({
-                "option_name": route_name,
-                "description": route_desc,
+                "option_name": route["option_name"],
+                "description": "Shortest distance" if i==0 else f"Alternate route #{i+1}",
                 "distance": round(distance, 2),
-                "duration": round(adjusted_duration, 2),
+                "duration": round(duration, 2),
                 "original_duration": round(duration, 2),
                 "path": path,
-                "steps": steps
+                "steps": steps,
+                "traffic": random.choice(["light", "moderate", "heavy"])
             })
     
-    # If OSRM failed completely, create a simplistic fallback route based on direct path
-    # This is necessary because we can't generate completely custom routes since 
-    # the requirement is to use real roads data
-    if len(route_options) == 0:
+    # Fallback to old logic if ORS fails
+    if not route_options:
         # Create a direct route as a fallback
         fallback_path = [[start["lat"], start["lng"]], [end["lat"], end["lng"]]]
-        
+        # Calculate direct distance
+        direct_distance = calculate_distance(start["lat"], start["lng"], end["lat"], end["lng"])
         # Approximate the distance (straight-line distance with a realistic factor)
         fallback_distance = direct_distance * 1.3  # Typical road path is 30% longer than direct
         
@@ -721,4 +722,208 @@ def calculate_bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> flo
     # Normalize to 0-360
     bearing_deg = (bearing_deg + 360) % 360
     
-    return bearing_deg 
+    return bearing_deg
+
+def optimize_multi_stop_route(locations: list, vehicle_type: str = "car") -> dict:
+    """
+    Use OpenRouteService optimization endpoint to solve the TSP for delivery stops.
+    locations: list of dicts with 'lat' and 'lng' keys
+    vehicle_type: 'car', 'bike', or 'walk'
+    Returns dict with optimized order, route geometry, and total distance/duration.
+    """
+    profile_map = {
+        "car": "driving-car",
+        "bike": "cycling-regular",
+        "walk": "foot-walking"
+    }
+    profile = profile_map.get(vehicle_type, "driving-car")
+    url = "https://api.openrouteservice.org/optimization"
+    headers = {"Authorization": OPENROUTESERVICE_API_KEY, "Content-Type": "application/json"}
+
+    # Build jobs (stops) and single vehicle
+    jobs = []
+    for idx, loc in enumerate(locations):
+        jobs.append({
+            "id": idx + 1,
+            "service": 300,  # seconds spent at each stop (arbitrary)
+            "location": [loc["lng"], loc["lat"]]
+        })
+    vehicle = {
+        "id": 1,
+        "profile": profile,
+        "start": [locations[0]["lng"], locations[0]["lat"]],
+        "end": [locations[0]["lng"], locations[0]["lat"]],  # round trip
+    }
+    body = {
+        "jobs": jobs,
+        "vehicles": [vehicle]
+    }
+    try:
+        resp = requests.post(url, json=body, headers=headers, timeout=20)
+        if resp.status_code != 200:
+            print(f"ORS optimization error: {resp.status_code} {resp.text}")
+            return {"error": resp.text}
+        data = resp.json()
+        # Parse the optimized order
+        if not data.get("routes") or not data.get("jobs"):
+            print(f"ORS optimization missing routes/jobs: {data}")
+            return {"error": "ORS optimization did not return routes/jobs"}
+        route = data["routes"][0]
+        steps = route["steps"]
+        # Map job ids to locations
+        id_to_loc = {j["id"]: j["location"] for j in data["jobs"]}
+        ordered_coords = [id_to_loc[step["job"]] for step in steps if "job" in step]
+        # Add start/end if not present
+        if ordered_coords[0] != vehicle["start"]:
+            ordered_coords = [vehicle["start"]] + ordered_coords
+        if ordered_coords[-1] != vehicle["end"]:
+            ordered_coords = ordered_coords + [vehicle["end"]]
+        # ORS directions expects [lng, lat] pairs
+        coords_str = "|".join([f"{lng},{lat}" for lng, lat in ordered_coords])
+        directions_url = f"https://api.openrouteservice.org/v2/directions/{profile}"
+        directions_headers = {"Authorization": OPENROUTESERVICE_API_KEY}
+        directions_body = {
+            "coordinates": ordered_coords
+        }
+        dir_resp = requests.post(directions_url, json=directions_body, headers=directions_headers, timeout=20)
+        if dir_resp.status_code != 200:
+            print(f"ORS directions error: {dir_resp.status_code} {dir_resp.text}")
+            return {"error": dir_resp.text}
+        dir_data = dir_resp.json()
+        # ORS returns geometry as encoded polyline string, decode to coordinates
+        geometry = dir_data["routes"][0]["geometry"]
+        coordinates = polyline.decode(geometry)
+        # Return geometry and summary in the expected format
+        return {
+            "routes": [
+                {
+                    "geometry": {"coordinates": [[lat, lng] for lat, lng in coordinates]},
+                    "summary": dir_data["routes"][0]["summary"]
+                }
+            ],
+            "ordered_stops": [
+                {"lat": lat, "lng": lng} for lng, lat in ordered_coords
+            ]
+        }
+    except Exception as e:
+        import traceback
+        print(f"ORS optimization request failed: {e}")
+        traceback.print_exc()
+        return {"error": str(e)}
+
+# --- DAA Graph Algorithms: Dijkstra and Floyd-Warshall ---
+
+def build_landmark_graph(locations=None, max_edge_km=2.5):
+    """
+    Build an adjacency list graph from Dehradun landmarks.
+    Edges are created between landmarks within max_edge_km (default 2.5km).
+    Returns: dict {name: [(neighbor_name, distance_km), ...]}
+    """
+    if locations is None:
+        from .locations import DEHRADUN_LOCATIONS
+        locations = DEHRADUN_LOCATIONS
+    graph = {}
+    for loc in locations:
+        graph[loc['name']] = []
+        for other in locations:
+            if loc['name'] == other['name']:
+                continue
+            dist = calculate_distance(loc['lat'], loc['lng'], other['lat'], other['lng'])
+            if dist <= max_edge_km:
+                graph[loc['name']].append((other['name'], dist))
+    return graph
+
+
+def dijkstra(graph, start, end):
+    """
+    Dijkstra's algorithm for shortest path in a weighted graph.
+    Returns (distance, path) from start to end.
+    """
+    import heapq
+    queue = [(0, start, [start])]
+    visited = set()
+    while queue:
+        (cost, node, path) = heapq.heappop(queue)
+        if node == end:
+            return cost, path
+        if node in visited:
+            continue
+        visited.add(node)
+        for neighbor, weight in graph.get(node, []):
+            if neighbor not in visited:
+                heapq.heappush(queue, (cost + weight, neighbor, path + [neighbor]))
+    return float('inf'), []
+
+
+def floyd_warshall(graph):
+    """
+    Floyd-Warshall algorithm for all-pairs shortest paths.
+    Returns: dist, next_hop dicts for path reconstruction.
+    """
+    nodes = list(graph.keys())
+    dist = {u: {v: float('inf') for v in nodes} for u in nodes}
+    next_hop = {u: {v: None for v in nodes} for u in nodes}
+    for u in nodes:
+        dist[u][u] = 0
+        for v, w in graph[u]:
+            dist[u][v] = w
+            next_hop[u][v] = v
+    for k in nodes:
+        for i in nodes:
+            for j in nodes:
+                if dist[i][j] > dist[i][k] + dist[k][j]:
+                    dist[i][j] = dist[i][k] + dist[k][j]
+                    next_hop[i][j] = next_hop[i][k]
+    return dist, next_hop
+
+
+def reconstruct_fw_path(next_hop, start, end):
+    """
+    Reconstruct path from Floyd-Warshall next_hop table.
+    """
+    if next_hop[start][end] is None:
+        return []
+    path = [start]
+    while start != end:
+        start = next_hop[start][end]
+        path.append(start)
+    return path
+
+
+def get_landmark_coords(name, locations=None):
+    if locations is None:
+        from .locations import DEHRADUN_LOCATIONS
+        locations = DEHRADUN_LOCATIONS
+    for loc in locations:
+        if loc['name'] == name:
+            return loc['lat'], loc['lng']
+    return None, None
+
+
+def route_with_dijkstra(start_name, end_name, locations=None):
+    """
+    Find shortest path between two landmarks using Dijkstra's algorithm.
+    Returns: path (list of [lat, lng]), total distance (km)
+    """
+    graph = build_landmark_graph(locations)
+    dist, path_names = dijkstra(graph, start_name, end_name)
+    path_coords = [get_landmark_coords(n, locations) for n in path_names]
+    return path_coords, dist
+
+
+def route_with_floyd_warshall(start_name, end_name, fw_cache=None, locations=None):
+    """
+    Find shortest path using Floyd-Warshall (optionally with precomputed cache).
+    Returns: path (list of [lat, lng]), total distance (km)
+    """
+    if fw_cache is None:
+        # Increase max_edge_km to 7.5 for a much more connected graph
+        graph = build_landmark_graph(locations, max_edge_km=7.5)
+        dist, next_hop = floyd_warshall(graph)
+    else:
+        dist, next_hop = fw_cache
+    path_names = reconstruct_fw_path(next_hop, start_name, end_name)
+    path_coords = [get_landmark_coords(n, locations) for n in path_names]
+    return path_coords, dist[start_name][end_name]
+
+# --- End DAA Graph Algorithms ---

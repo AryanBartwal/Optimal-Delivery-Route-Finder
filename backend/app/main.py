@@ -1,8 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Form
+from fastapi import FastAPI, Depends, HTTPException, status, Form, Body
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 
@@ -16,7 +16,8 @@ from .auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 from .locations import get_all_locations, get_location_by_name
-from .route_service import get_route
+from .route_service import get_route, optimize_multi_stop_route, route_with_floyd_warshall, route_with_dijkstra, get_osrm_route, decode_polyline
+from .user_route_history import add_route_to_history, get_user_history
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -49,6 +50,10 @@ class RouteCreate(BaseModel):
     vehicle_type: str
     route_option: Optional[str] = None  # Optional parameter for selected route option
     user_weather: Optional[str] = None  # Optional parameter for user-specified weather
+
+class OptimizeRouteRequest(BaseModel):
+    stops: list  # List of {lat, lng} dicts
+    vehicle_type: str = "car"
 
 @app.post("/register")
 async def register_user(user: UserCreate, db: Session = Depends(get_db)):
@@ -96,47 +101,60 @@ def get_locations() -> List[Dict[str, Any]]:
     return get_all_locations()
 
 @app.post("/routes")
-def create_route(
-    route_data: RouteCreate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+async def create_route(
+    route: RouteCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     try:
         # Calculate route using route service, pass user weather if specified
-        route_result = get_route(
-            route_data.start_location, 
-            route_data.end_location, 
-            route_data.vehicle_type,
-            route_data.user_weather
+        result = get_route(
+            route.start_location,
+            route.end_location,
+            route.vehicle_type,
+            route.user_weather
         )
         
         # Select the chosen route option or default to the first one
-        selected_option = route_data.route_option if route_data.route_option else "Route 1: Fast (Shortest)"
+        selected_option = route.route_option if route.route_option else "Route 1: Fast (Shortest)"
         
         # Find the selected route option
         selected_route = next(
-            (route for route in route_result["route_options"] if route["option_name"] == selected_option), 
-            route_result["route_options"][0]
+            (r for r in result["route_options"] if r["option_name"] == selected_option), 
+            result["route_options"][0]
         )
         
-        # Save route to history
-        route = RouteHistory(
+        # Save route to history in the database
+        db_route = RouteHistory(
             user_id=current_user.id,
-            start_location=route_data.start_location,
-            end_location=route_data.end_location,
-            vehicle_type=route_data.vehicle_type,
+            start_location=route.start_location,
+            end_location=route.end_location,
+            vehicle_type=route.vehicle_type,
             distance=selected_route["distance"],
             duration=selected_route["duration"],
-            weather_condition=route_result["weather"]["condition"],
-            traffic_condition=route_result["traffic"],
+            weather_condition=result["weather"]["condition"],
+            traffic_condition=result["traffic"],
             route_option=selected_route["option_name"]
         )
         
-        db.add(route)
+        db.add(db_route)
         db.commit()
-        db.refresh(route)
+        db.refresh(db_route)
         
-        return route_result
+        # Store in permanent user file
+        add_route_to_history(current_user.username, {
+            "start_location": route.start_location,
+            "end_location": route.end_location,
+            "vehicle_type": route.vehicle_type,
+            "route_option": route.route_option,
+            "weather_condition": result.get("weather", {}).get("condition"),
+            "traffic_condition": result.get("traffic"),
+            "distance": result.get("distance"),
+            "duration": result.get("duration"),
+            "created_at": datetime.utcnow().isoformat()
+        })
+        
+        return result
         
     except ValueError as e:
         raise HTTPException(
@@ -169,4 +187,200 @@ def get_route_history(
             "route_option": route.route_option
         }
         for route in routes
-    ] 
+    ]
+
+@app.get("/user/history")
+def get_history(current_user: User = Depends(get_current_user)):
+    return get_user_history(current_user.username)
+
+@app.post("/optimize-route")
+def optimize_route(request: OptimizeRouteRequest, current_user: User = Depends(get_current_user)):
+    if not request.stops or len(request.stops) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 stops required.")
+    result = optimize_multi_stop_route(request.stops, request.vehicle_type)
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
+    # Save to user history
+    add_route_to_history(current_user.username, {
+        "type": "multi-stop-optimized",
+        "stops": request.stops,
+        "vehicle_type": request.vehicle_type,
+        "ordered_stops": result.get("ordered_stops"),
+        "distance": result.get("routes", [{}])[0].get("summary", {}).get("distance"),
+        "duration": result.get("routes", [{}])[0].get("summary", {}).get("duration"),
+        "created_at": datetime.utcnow().isoformat()
+    })
+    return result
+
+@app.get("/test-floyd-warshall")
+def test_floyd_warshall(start: str, end: str):
+    """
+    Test endpoint to verify Floyd-Warshall and Dijkstra algorithms.
+    Returns both paths and distances for comparison, and a road-based route for the FW path.
+    """
+    # Floyd-Warshall
+    fw_path, fw_dist = route_with_floyd_warshall(start, end)
+    # Dijkstra
+    dj_path, dj_dist = route_with_dijkstra(start, end)
+    # Build road-based route for FW path (segment by segment)
+    road_polyline = []
+    for i in range(len(fw_path) - 1):
+        lat1, lng1 = fw_path[i]
+        lat2, lng2 = fw_path[i+1]
+        osrm_result = get_osrm_route(lng1, lat1, lng2, lat2)
+        if osrm_result and osrm_result.get("routes"):
+            segment = decode_polyline(osrm_result["routes"][0]["geometry"])
+            if road_polyline and segment:
+                # Avoid duplicate point at join
+                road_polyline += segment[1:]
+            else:
+                road_polyline += segment
+    return {
+        "start": start,
+        "end": end,
+        "floyd_warshall": {
+            "distance_km": fw_dist,
+            "path_coords": fw_path
+        },
+        "dijkstra": {
+            "distance_km": dj_dist,
+            "path_coords": dj_path
+        },
+        "fw_road_polyline": road_polyline,
+        "match": abs(fw_dist - dj_dist) < 1e-6 and fw_path == dj_path
+    }
+
+@app.post("/multi-floyd-warshall")
+def multi_floyd_warshall(
+    start: str = Body(...),
+    destinations: List[str] = Body(..., embed=True),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Compute a greedy multi-destination path using Floyd-Warshall between landmarks.
+    Returns the visiting order, road-based path coordinates, and total distance.
+    """
+    from .route_service import route_with_floyd_warshall, get_osrm_route, decode_polyline
+    from .locations import get_all_locations
+    if not start or not destinations or not isinstance(destinations, list) or len(destinations) < 1:
+        return {"error": "Provide a start and at least one destination."}
+    # Robustly match stop names to landmark names (case-insensitive, trimmed)
+    def match_landmark(name):
+        name = name.strip().lower()
+        for loc in get_all_locations():
+            if loc['name'].strip().lower() == name:
+                return loc['name']
+        return None
+    start_matched = match_landmark(start)
+    dests_matched = [match_landmark(d) for d in destinations]
+    if not start_matched or any(d is None for d in dests_matched):
+        return {"error": "One or more stops do not match any known Dehradun landmark. Please select from the dropdown only."}
+    order = [start_matched]
+    remaining = dests_matched[:]
+    fw_path_names = []
+    total_dist = 0.0
+    curr = start_matched
+    while remaining:
+        # Find nearest next destination
+        best = None
+        best_dist = float('inf')
+        best_path = []
+        for dest in remaining:
+            path, dist = route_with_floyd_warshall(curr, dest)
+            if dist < best_dist:
+                best = dest
+                best_dist = dist
+                best_path = path
+        if not best_path:
+            return {"error": f"No path from {curr} to {best}"}
+        if fw_path_names and best_path:
+            fw_path_names += best_path[1:]
+        else:
+            fw_path_names += best_path
+        total_dist += best_dist
+        order.append(best)
+        curr = best
+        remaining.remove(best)
+    # Build road-based polyline for the full path
+    road_polyline = []
+    for i in range(len(fw_path_names) - 1):
+        lat1, lng1 = fw_path_names[i]
+        lat2, lng2 = fw_path_names[i+1]
+        osrm_result = get_osrm_route(lng1, lat1, lng2, lat2)
+        if osrm_result and osrm_result.get("routes"):
+            segment = decode_polyline(osrm_result["routes"][0]["geometry"])
+            if road_polyline and segment:
+                road_polyline += segment[1:]
+            else:
+                road_polyline += segment
+    # Save to user history
+    add_route_to_history(current_user.username, {
+        "type": "multi-stop-floyd-warshall",
+        "stops": [start] + destinations,
+        "order": order,
+        "distance": total_dist,
+        "path_coords": road_polyline,
+        "created_at": datetime.utcnow().isoformat()
+    })
+    return {
+        "order": order,
+        "path_coords": road_polyline,
+        "total_distance_km": total_dist
+    }
+
+@app.post("/multi-direct-route")
+def multi_direct_route(
+    start: str = Body(...),
+    destinations: List[str] = Body(..., embed=True),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Compute a direct multi-destination path (in user-selected order) using OSRM between landmarks.
+    Returns the visiting order, road-based path coordinates, and total distance.
+    """
+    from .route_service import get_osrm_route, decode_polyline
+    from .locations import get_all_locations
+    if not start or not destinations or not isinstance(destinations, list) or len(destinations) < 1:
+        return {"error": "Provide a start and at least one destination."}
+    def match_landmark(name):
+        name = name.strip().lower()
+        for loc in get_all_locations():
+            if loc['name'].strip().lower() == name:
+                return loc['name']
+        return None
+    all_stops = [start] + destinations
+    matched_stops = [match_landmark(s) for s in all_stops]
+    if any(s is None for s in matched_stops):
+        return {"error": "One or more stops do not match any known Dehradun landmark. Please select from the dropdown only."}
+    order = matched_stops
+    road_polyline = []
+    total_dist = 0.0
+    for i in range(len(order) - 1):
+        from_name = order[i]
+        to_name = order[i+1]
+        from_loc = next(l for l in get_all_locations() if l['name'] == from_name)
+        to_loc = next(l for l in get_all_locations() if l['name'] == to_name)
+        osrm_result = get_osrm_route(from_loc['lng'], from_loc['lat'], to_loc['lng'], to_loc['lat'])
+        if osrm_result and osrm_result.get("routes"):
+            segment = decode_polyline(osrm_result["routes"][0]["geometry"])
+            if road_polyline and segment:
+                road_polyline += segment[1:]
+            else:
+                road_polyline += segment
+            total_dist += osrm_result["routes"][0]["distance"] / 1000.0
+        else:
+            return {"error": f"No route from {from_name} to {to_name}"}
+    # Save to user history
+    add_route_to_history(current_user.username, {
+        "type": "multi-stop-direct",
+        "stops": all_stops,
+        "order": order,
+        "distance": total_dist,
+        "path_coords": road_polyline,
+        "created_at": datetime.utcnow().isoformat()
+    })
+    return {
+        "order": order,
+        "path_coords": road_polyline,
+        "total_distance_km": total_dist
+    }
