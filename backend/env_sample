@@ -1,3 +1,0 @@
-DATABASE_URL=sqlite:///app.db
-SECRET_KEY=your-secret-key-here
-CORS_ORIGINS=https://alok-nawani.github.io 

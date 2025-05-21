@@ -811,7 +811,7 @@ def optimize_multi_stop_route(locations: list, vehicle_type: str = "car") -> dic
         traceback.print_exc()
         return {"error": str(e)}
 
-# --- DAA Graph Algorithms: Dijkstra and Floyd-Warshall ---
+# --- DAA Graph Algorithms: Floyd-Warshall Only ---
 
 def build_landmark_graph(locations=None, max_edge_km=2.5):
     """
@@ -832,27 +832,6 @@ def build_landmark_graph(locations=None, max_edge_km=2.5):
             if dist <= max_edge_km:
                 graph[loc['name']].append((other['name'], dist))
     return graph
-
-
-def dijkstra(graph, start, end):
-    """
-    Dijkstra's algorithm for shortest path in a weighted graph.
-    Returns (distance, path) from start to end.
-    """
-    import heapq
-    queue = [(0, start, [start])]
-    visited = set()
-    while queue:
-        (cost, node, path) = heapq.heappop(queue)
-        if node == end:
-            return cost, path
-        if node in visited:
-            continue
-        visited.add(node)
-        for neighbor, weight in graph.get(node, []):
-            if neighbor not in visited:
-                heapq.heappush(queue, (cost + weight, neighbor, path + [neighbor]))
-    return float('inf'), []
 
 
 def floyd_warshall(graph):
@@ -900,25 +879,14 @@ def get_landmark_coords(name, locations=None):
     return None, None
 
 
-def route_with_dijkstra(start_name, end_name, locations=None):
-    """
-    Find shortest path between two landmarks using Dijkstra's algorithm.
-    Returns: path (list of [lat, lng]), total distance (km)
-    """
-    graph = build_landmark_graph(locations)
-    dist, path_names = dijkstra(graph, start_name, end_name)
-    path_coords = [get_landmark_coords(n, locations) for n in path_names]
-    return path_coords, dist
-
-
 def route_with_floyd_warshall(start_name, end_name, fw_cache=None, locations=None):
     """
     Find shortest path using Floyd-Warshall (optionally with precomputed cache).
     Returns: path (list of [lat, lng]), total distance (km)
     """
     if fw_cache is None:
-        # Increase max_edge_km to 7.5 for a much more connected graph
-        graph = build_landmark_graph(locations, max_edge_km=7.5)
+        # Increase max_edge_km to 12 for a much more connected graph
+        graph = build_landmark_graph(locations, max_edge_km=12)
         dist, next_hop = floyd_warshall(graph)
     else:
         dist, next_hop = fw_cache

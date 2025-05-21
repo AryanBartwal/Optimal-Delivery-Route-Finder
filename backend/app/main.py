@@ -16,7 +16,7 @@ from .auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 from .locations import get_all_locations, get_location_by_name
-from .route_service import get_route, optimize_multi_stop_route, route_with_floyd_warshall, route_with_dijkstra, get_osrm_route, decode_polyline
+from .route_service import get_route, optimize_multi_stop_route, route_with_floyd_warshall, get_osrm_route, decode_polyline
 from .user_route_history import add_route_to_history, get_user_history
 
 # Create database tables
@@ -215,13 +215,11 @@ def optimize_route(request: OptimizeRouteRequest, current_user: User = Depends(g
 @app.get("/test-floyd-warshall")
 def test_floyd_warshall(start: str, end: str):
     """
-    Test endpoint to verify Floyd-Warshall and Dijkstra algorithms.
-    Returns both paths and distances for comparison, and a road-based route for the FW path.
+    Test endpoint to verify Floyd-Warshall algorithm.
+    Returns path and distance, and a road-based route for the FW path.
     """
     # Floyd-Warshall
     fw_path, fw_dist = route_with_floyd_warshall(start, end)
-    # Dijkstra
-    dj_path, dj_dist = route_with_dijkstra(start, end)
     # Build road-based route for FW path (segment by segment)
     road_polyline = []
     for i in range(len(fw_path) - 1):
@@ -242,12 +240,7 @@ def test_floyd_warshall(start: str, end: str):
             "distance_km": fw_dist,
             "path_coords": fw_path
         },
-        "dijkstra": {
-            "distance_km": dj_dist,
-            "path_coords": dj_path
-        },
-        "fw_road_polyline": road_polyline,
-        "match": abs(fw_dist - dj_dist) < 1e-6 and fw_path == dj_path
+        "fw_road_polyline": road_polyline
     }
 
 @app.post("/multi-floyd-warshall")
